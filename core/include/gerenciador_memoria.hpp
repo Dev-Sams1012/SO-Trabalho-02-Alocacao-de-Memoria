@@ -3,9 +3,8 @@
 #include <cstddef>
 #include <expected>
 #include <string>
-#include <vector>
 
-#include "bloco_memoria.hpp"
+#include "estado_memoria.hpp"
 #include "estatisticas_memoria.hpp"
 #include "fit_alg.hpp"
 #include "option.hpp"
@@ -27,10 +26,10 @@ public:
 
   std::string show() const;
 
-private:
-  std::vector<BlocoMemoria> blocos;
+  const EstadoMemoria& estado() const;
 
-  std::size_t tamanho_total{0};
-  std::size_t proximo_id{1};
-  std::size_t ponteiro_next_fit{0};
+  void restaurar(const EstadoMemoria& estado);
+
+private:
+  EstadoMemoria estado_;
 };
