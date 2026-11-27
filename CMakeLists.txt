@@ -13,3 +13,4 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 add_subdirectory(core)
+add_subdirectory(alocadores)
