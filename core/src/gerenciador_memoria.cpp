@@ -70,6 +70,76 @@ EstatisticasMemoria GerenciadorMemoria::stats() const {
   return estatisticas;
 }
 
+namespace {
+
+// Marca o bloco `i` como livre e une o buraco resultante com os vizinhos
+// livres. Mantém o vetor ordenado e a memória coberta sem lacunas.
+//
+// Depende de um invariante garantido pelas demais operações: nunca existem
+// dois buracos adjacentes. Por isso, antes da liberação cada lado do bloco tem
+// no máximo UM buraco vizinho, e olhar só os vizinhos imediatos basta.
+void liberar_e_unir(EstadoMemoria& estado, std::size_t i) {
+  auto& blocos = estado.blocos;
+
+  // 1. Transforma o bloco em buraco (convenção: buraco tem id = 0).
+  blocos[i].id = 0;
+  blocos[i].esta_alocado = false;
+
+  // 2. Une com o vizinho da DIREITA, se for buraco. Fazemos a direita primeiro
+  //    para que o índice `i` continue válido (só apagamos depois dele).
+  if (i + 1 < blocos.size() && !blocos[i + 1].esta_alocado) {
+    blocos[i].tamanho += blocos[i + 1].tamanho;
+    blocos.erase(blocos.begin() + i + 1);
+  }
+
+  // 3. Une com o vizinho da ESQUERDA, se for buraco: o da esquerda absorve o
+  //    bloco `i` (o endereço inicial do buraco unido é o do da esquerda).
+  if (i > 0 && !blocos[i - 1].esta_alocado) {
+    blocos[i - 1].tamanho += blocos[i].tamanho;
+    blocos.erase(blocos.begin() + i);
+  }
+}
+
+}  // namespace
+
+std::expected<void, std::string> GerenciadorMemoria::free_id(std::size_t id) {
+  if (estado_.tamanho_total == 0) {
+    return std::unexpected("Erro: memória não inicializada (use init)");
+  }
+
+  // Só blocos ALOCADOS têm id válido: o id 0 marca buracos, então nunca
+  // casa com um pedido de liberação.
+  for (std::size_t i = 0; i < estado_.blocos.size(); ++i) {
+    const BlocoMemoria& bloco = estado_.blocos[i];
+    if (bloco.esta_alocado && bloco.id == id) {
+      liberar_e_unir(estado_, i);
+      return {};
+    }
+  }
+
+  return std::unexpected("Erro: id " + std::to_string(id) + " inexistente");
+}
+
+std::expected<void, std::string> GerenciadorMemoria::free_addr(
+    std::size_t endereco) {
+  if (estado_.tamanho_total == 0) {
+    return std::unexpected("Erro: memória não inicializada (use init)");
+  }
+
+  // O endereço precisa ser exatamente o INÍCIO de um bloco alocado. Um
+  // endereço no meio de um bloco, ou dentro de um buraco, não casa com nada.
+  for (std::size_t i = 0; i < estado_.blocos.size(); ++i) {
+    const BlocoMemoria& bloco = estado_.blocos[i];
+    if (bloco.esta_alocado && bloco.inicio == endereco) {
+      liberar_e_unir(estado_, i);
+      return {};
+    }
+  }
+
+  return std::unexpected("Erro: endereço " + std::to_string(endereco) +
+                         " não é o início de um bloco alocado");
+}
+
 std::string GerenciadorMemoria::show() const {
   if (estado_.tamanho_total == 0) {
     return "Memória não inicializada.\n";
