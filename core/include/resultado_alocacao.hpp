@@ -15,7 +15,10 @@ struct ResultadoAlocacao {
   std::size_t buraco_escolhido{0};
 
   // Endereços iniciais dos buracos examinados pela busca, na ordem em que
-  // foram olhados (o escolhido é o último da lista). Usamos endereços, e não
-  // índices do vetor, porque os índices mudam quando o buraco é dividido.
+  // foram olhados. No First Fit e no Next Fit o escolhido é o último da lista
+  // (a busca para nele); no Best e no Worst Fit todos os buracos são
+  // examinados e o escolhido pode estar em qualquer posição. Usamos
+  // endereços, e não índices do vetor, porque os índices mudam quando o
+  // buraco é dividido.
   std::vector<std::size_t> buracos_examinados;
 };
