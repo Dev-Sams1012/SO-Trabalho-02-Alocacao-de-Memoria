@@ -44,8 +44,10 @@ EstatisticasMemoria GerenciadorMemoria::stats() const {
 
   estatisticas.memoria_livre = memoria_livre;
 
-  estatisticas.percentual_uso =
-      static_cast<double>(memoria_ocupada) / estado_.tamanho_total * 100.0;
+  if (estado_.tamanho_total > 0) {
+    estatisticas.percentual_uso =
+        static_cast<double>(memoria_ocupada) / estado_.tamanho_total * 100.0;
+  }
 
   std::size_t quantidade_buracos = std::ranges::count_if(
       estado_.blocos, [](bool esta_alocado) { return !esta_alocado; },
