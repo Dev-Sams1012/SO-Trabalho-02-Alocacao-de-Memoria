@@ -37,6 +37,6 @@ struct ComandoStats {};
 
 // Um comando é exatamente UM destes tipos. Quem executa usa std::visit, e o
 // compilador avisa se um tipo novo for esquecido.
-using Comando = std::variant<ComandoInit, ComandoAlloc, ComandoFreeId,
-                             ComandoFreeAddr, ComandoDefrag, ComandoShow,
-                             ComandoStats>;
+using Comando =
+    std::variant<ComandoInit, ComandoAlloc, ComandoFreeId, ComandoFreeAddr,
+                 ComandoDefrag, ComandoShow, ComandoStats>;
