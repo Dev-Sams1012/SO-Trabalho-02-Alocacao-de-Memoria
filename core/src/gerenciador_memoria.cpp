@@ -3,6 +3,8 @@
 #include "estado_memoria.hpp"
 
 #include <algorithm>
+#include <expected>
+#include <format>
 #include <iomanip>
 #include <ranges>
 #include <sstream>
@@ -141,7 +143,7 @@ std::string GerenciadorMemoria::show() const {
   std::string mapa_fisico(estado_.tamanho_total, '.');
   std::string mapa_ids(estado_.tamanho_total, '.');
 
-  // Símbolos para representar os IDs na linha do mapa.
+  // Símbolos para representar os IDs na linha do mapa
   constexpr std::string_view simbolos = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
   for (const BlocoMemoria &bloco : estado_.blocos) {
@@ -171,7 +173,7 @@ std::string GerenciadorMemoria::show() const {
 
   saida << separador << '\n';
 
-  // Informações dos blocos alocados.
+  // Informações dos blocos alocados
   saida << "Blocos ativos: ";
 
   bool primeiro = true;
@@ -196,7 +198,7 @@ std::string GerenciadorMemoria::show() const {
     saida << "Nenhum";
   }
 
-  // Estatísticas.
+  // Estatísticas
   saida << "\n== Estatísticas ==\n";
 
   saida << "Tamanho total: " << estado_.tamanho_total << " bytes\n";
@@ -213,4 +215,78 @@ std::string GerenciadorMemoria::show() const {
         << estatisticas.percentual_uso << "%\n";
 
   return saida.str();
+}
+
+std::expected<ResultadoAlocacao, std::string>
+GerenciadorMemoria::alloc(std::size_t tamanho, FitAlg algoritmo) {
+  if (estado_.tamanho_total == 0) {
+    return std::unexpected("Memória não inicializada. Use init primeiro.");
+  }
+
+  if (tamanho == 0) {
+    return std::unexpected("O tamanho da alocação deve ser maior que zero.");
+  }
+
+  if (!fabrica_) {
+    return std::unexpected("Nenhuma fábrica de estratégias foi configurada.");
+  }
+
+  auto estrategia = fabrica_(algoritmo);
+
+  if (!estrategia) {
+    return std::unexpected("Algoritmo de alocação indisponível.");
+  }
+
+  const ResultadoBusca busca = estrategia->buscar(estado_, tamanho);
+
+  if (!busca.escolhido.has_value()) {
+    const EstatisticasMemoria estatisticas = stats();
+
+    return std::unexpected(std::format(
+        "sem espaço contíguo para {} bytes (livre total: {}, maior buraco: {})",
+        tamanho, estatisticas.memoria_livre, estatisticas.maior_buraco));
+  }
+
+  const std::size_t indice = *busca.escolhido;
+
+  ResultadoAlocacao resultado;
+
+  // converte índices em endereços antes de dividir o buraco, pois o insert
+  // desloca os índices dos blocos seguintes
+  for (std::size_t indice_examinado : busca.examinados) {
+    resultado.buracos_examinados.emplace_back(
+        estado_.blocos[indice_examinado].inicio);
+  }
+
+  // cópia pq o insert pode realocar o vetor
+  const BlocoMemoria buraco = estado_.blocos[indice];
+
+  resultado.buraco_escolhido = buraco.inicio;
+
+  // divide o buraco e a sobra continua livre
+  if (buraco.tamanho > tamanho) {
+    BlocoMemoria sobra{.id = 0,
+                       .inicio = buraco.inicio + tamanho,
+                       .tamanho = buraco.tamanho - tamanho,
+                       .esta_alocado = false};
+
+    estado_.blocos.insert(std::next(estado_.blocos.begin(), indice + 1), sobra);
+  }
+
+  // bloco alocado ocupa sempre o início do buraco escolhido
+  BlocoMemoria &novo_bloco = estado_.blocos[indice];
+
+  novo_bloco.id = estado_.proximo_id++; // sequencial
+  novo_bloco.inicio = buraco.inicio;
+  novo_bloco.tamanho = tamanho;
+  novo_bloco.esta_alocado = true;
+
+  // ponteiro vai para o fim do novo bloco
+  estado_.ponteiro_next_fit = novo_bloco.inicio + novo_bloco.tamanho;
+
+  resultado.id = novo_bloco.id;
+  resultado.inicio = novo_bloco.inicio;
+  resultado.tamanho = novo_bloco.tamanho;
+
+  return resultado;
 }
