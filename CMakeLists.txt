@@ -14,3 +14,4 @@ endif()
 
 add_subdirectory(core)
 add_subdirectory(alocadores)
+add_subdirectory(io)
