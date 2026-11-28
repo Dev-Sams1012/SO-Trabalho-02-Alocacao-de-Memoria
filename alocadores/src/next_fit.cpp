@@ -36,11 +36,13 @@ ResultadoBusca NextFit::buscar(const EstadoMemoria& estado,
   // Visita cada buraco exatamente uma vez: de p até o fim e, depois, do
   // início até p-1. O "% n" faz a volta circular.
   for (std::size_t k = 0; k < n; ++k) {
-    const std::size_t i = buracos[(p + k) % n];
-    resultado.examinados.push_back(i);
-
-    if (cabe(estado.blocos[i], tamanho)) {
-      resultado.escolhido = i;
+    const std::size_t posicao = (p + k) % n;
+    const std::size_t indice_bloco = buracos[posicao];
+    
+    resultado.examinados.push_back(indice_bloco);
+    
+    if (cabe(estado.blocos[indice_bloco], tamanho)) {
+      resultado.escolhido = indice_bloco;
       break;
     }
   }
