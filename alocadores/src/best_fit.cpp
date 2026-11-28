@@ -12,15 +12,16 @@ ResultadoBusca BestFit::buscar(const EstadoMemoria& estado,
 
   for (std::size_t i : indices_dos_buracos(estado)) {
     resultado.examinados.push_back(i);
+    std::size_t menor_tamanho = 0;
 
     const BlocoMemoria& buraco = estado.blocos[i];
     if (!cabe(buraco, tamanho)) {
       continue;
     }
 
-    if (!resultado.escolhido ||
-        buraco.tamanho < estado.blocos[*resultado.escolhido].tamanho) {
-      resultado.escolhido = i;
+    if (!resultado.escolhido || buraco.tamanho < menor_tamanho) {
+        resultado.escolhido = i;
+        menor_tamanho = buraco.tamanho;
     }
   }
 
